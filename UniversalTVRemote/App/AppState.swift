@@ -6,7 +6,12 @@ import Combine
 
 @MainActor
 final class AppState: ObservableObject {
-    @Published var selectedDevice: DiscoveredDevice?
+    @Published var selectedDevice: DiscoveredDevice? {
+        didSet {
+            selectedDriver = selectedDevice.map { driverRegistry.driver(for: $0) }
+        }
+    }
+    @Published var selectedDriver: TVDriver?
 
     let discoveryViewModel: DeviceDiscoveryViewModel
     let driverRegistry: DriverRegistry
@@ -20,7 +25,6 @@ final class AppState: ObservableObject {
     }
 
     func driverForSelectedDevice() -> TVDriver? {
-        guard let selectedDevice else { return nil }
-        return driverRegistry.driver(for: selectedDevice)
+        selectedDriver
     }
 }
