@@ -53,16 +53,25 @@ public final class SSDPScanner: SSDPScanning {
 
     public func parseSSDPResponse(_ data: Data) -> [String: String] {
         guard let response = String(data: data, encoding: .utf8) else { return [:] }
+
         var headers: [String: String] = [:]
+
         response
-            .split(separator: "\r\n")
+            .split(separator: "\r\n", omittingEmptySubsequences: true)
             .forEach { line in
-                if let separator = line.firstIndex(of: ":") {
-                    let key = String(line[..<separator]).trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-                    let value = String(line[line.index(after: separator)...]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    headers[key] = value
-                }
+                guard let colonIndex = line.firstIndex(of: ":") else { return }
+
+                let key = line[..<colonIndex]
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .uppercased()
+
+                let valueStart = line.index(after: colonIndex)
+                let value = line[valueStart...]
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+
+                headers[key] = value
             }
+
         return headers
     }
 

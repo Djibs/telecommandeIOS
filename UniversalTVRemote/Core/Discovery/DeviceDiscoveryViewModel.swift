@@ -2,6 +2,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 public final class DeviceDiscoveryViewModel: ObservableObject {
