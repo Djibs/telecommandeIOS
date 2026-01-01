@@ -12,12 +12,24 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
     private var services: [NetService] = []
     private var devices: [DiscoveredDevice] = []
     private var continuation: CheckedContinuation<[DiscoveredDevice], Never>?
-    private var browser: NetServiceBrowser?
+    private var browsers: [NetServiceBrowser] = []
+    private var browserTypes: [ObjectIdentifier: String] = [:]
     private var timeoutWorkItem: DispatchWorkItem?
     private var isSearching = false
     private var scanId = 0
     private var activeScanId = 0
     private let logger = AppLogger.discovery
+    private let browserFactory: (String) -> NetServiceBrowser
+
+    private let serviceTypes: [String] = [
+        "_roku._tcp.",
+        "_googlecast._tcp."
+    ]
+
+    public init(browserFactory: @escaping (String) -> NetServiceBrowser = { _ in NetServiceBrowser() }) {
+        self.browserFactory = browserFactory
+        super.init()
+    }
 
     public nonisolated static var defaultTimeout: TimeInterval {
     #if DEBUG
@@ -42,14 +54,16 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
         devices = []
         scanId += 1
         activeScanId = scanId
-        let browser = NetServiceBrowser()
-        self.browser = browser
         self.continuation = continuation
         isSearching = true
-        browser.delegate = self
         logger.info("Bonjour startScan scanId=\(self.activeScanId, privacy: .public) (timeout \(timeout, privacy: .public)s)")
-        browser.searchForServices(ofType: "_roku._tcp.", inDomain: "local.")
-        browser.searchForServices(ofType: "_googlecast._tcp.", inDomain: "local.")
+        browsers = serviceTypes.map { type in
+            let browser = browserFactory(type)
+            browser.delegate = self
+            browserTypes[ObjectIdentifier(browser)] = type
+            browser.searchForServices(ofType: type, inDomain: "local.")
+            return browser
+        }
 
         timeoutWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
@@ -62,8 +76,9 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
     private func finishScan(reason: String) {
         guard isSearching else { return }
         let currentScanId = activeScanId
-        browser?.stop()
-        browser = nil
+        browsers.forEach { $0.stop() }
+        browsers = []
+        browserTypes = [:]
         timeoutWorkItem?.cancel()
         timeoutWorkItem = nil
         isSearching = false
@@ -76,6 +91,14 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
         service.delegate = self
         service.resolve(withTimeout: 2.0)
         services.append(service)
+    }
+
+    public func netServiceBrowserWillSearch(_ browser: NetServiceBrowser) {
+        logger.info("Bonjour willSearch scanId=\(self.activeScanId, privacy: .public) type=\(browserType(for: browser), privacy: .public)")
+    }
+
+    public func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) {
+        logger.info("Bonjour didStopSearch scanId=\(self.activeScanId, privacy: .public) type=\(browserType(for: browser), privacy: .public)")
     }
 
     public func netServiceDidResolveAddress(_ sender: NetService) {
@@ -104,6 +127,11 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
     }
 
     public func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String: NSNumber]) {
-        logger.error("Bonjour search error scanId=\(self.activeScanId, privacy: .public): \(errorDict.description, privacy: .public)")
+        logger.error("Bonjour search error scanId=\(self.activeScanId, privacy: .public) type=\(browserType(for: browser), privacy: .public): \(errorDict.description, privacy: .public)")
+        finishScan(reason: "didNotSearch")
+    }
+
+    private func browserType(for browser: NetServiceBrowser) -> String {
+        browserTypes[ObjectIdentifier(browser)] ?? "unknown"
     }
 }
