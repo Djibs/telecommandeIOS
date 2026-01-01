@@ -3,7 +3,7 @@
 import Combine
 import Foundation
 import WebOSClient
-import os
+import OSLog
 
 @MainActor
 public enum LGWebOSConnectionState: Equatable {
@@ -47,7 +47,7 @@ public final class LGWebOSService: NSObject, ObservableObject, LGWebOSControllin
 
     private let device: DiscoveredDevice
     private let keychainStore: KeychainStoring
-    private let logger = Logger(subsystem: "UniversalTVRemote", category: "LGWebOS")
+    private let logger = AppLogger.lgWebOS
     private let clientFactory: (URL, WebOSClientDelegate?) -> WebOSClientProtocol
 
     private var client: WebOSClientProtocol?
@@ -98,6 +98,7 @@ public final class LGWebOSService: NSObject, ObservableObject, LGWebOSControllin
     }
 
     public func disconnect() {
+        logger.info("Déconnexion WebOS demandée (raison: user)")
         client?.disconnect()
         client = nil
         isConnected = false
@@ -107,6 +108,7 @@ public final class LGWebOSService: NSObject, ObservableObject, LGWebOSControllin
     public func setPin(_ pin: String) {
         guard !pin.isEmpty else { return }
         state = .registering
+        logger.info("Envoi PIN WebOS (valeur masquée)")
         client?.send(.setPin(pin))
     }
 
@@ -134,6 +136,7 @@ public final class LGWebOSService: NSObject, ObservableObject, LGWebOSControllin
         state = .connecting
         isConnected = false
         attemptedFallback = false
+        logger.info("Connexion WebOS démarrée")
         connect(usingSecureSocket: true)
     }
 
@@ -153,10 +156,13 @@ public final class LGWebOSService: NSObject, ObservableObject, LGWebOSControllin
         state = .registering
         let clientKeyData = (try? keychainStore.get(keychainKey)) ?? nil
         let clientKey = clientKeyData.flatMap { String(data: $0, encoding: .utf8) }
+        logger.info("Register WebOS (pairing \(currentPairingType.rawValue, privacy: .public))")
+        logger.info("État WebOS: registering")
         client?.send(.register(pairingType: currentPairingType, clientKey: clientKey))
     }
 
     private func transitionToError(_ message: String) {
+        logger.error("Transition erreur WebOS: \(message, privacy: .public)")
         state = .error(message)
         resumePendingContinuations(error: RemoteError.network(message))
     }
@@ -177,15 +183,18 @@ public final class LGWebOSService: NSObject, ObservableObject, LGWebOSControllin
 extension LGWebOSService: WebOSClientDelegate {
     public func didConnect() {
         isConnected = true
+        logger.info("Connexion WebOS OK")
         register()
     }
 
     public func didPrompt() {
         state = .awaitingPrompt
+        logger.info("État WebOS: awaitingPrompt")
     }
 
     public func didDisplayPin() {
         state = .awaitingPin
+        logger.info("État WebOS: awaitingPin")
     }
 
     public func didRegister(with clientKey: String) {
@@ -193,7 +202,9 @@ extension LGWebOSService: WebOSClientDelegate {
             if let data = clientKey.data(using: .utf8) {
                 try keychainStore.set(data, forKey: keychainKey)
             }
+            logger.info("clientKey reçu (valeur masquée)")
             state = .ready
+            logger.info("État WebOS: ready")
             resumePendingContinuations(success: true)
             Task {
                 do {
@@ -228,19 +239,22 @@ extension LGWebOSService: WebOSClientDelegate {
 
     public func didReceiveNetworkError(_ error: Error?) {
         let message = error?.localizedDescription ?? "Erreur réseau inconnue"
+        let code = (error as NSError?)?.code
+        let details = code.map { "\(message) (code \($0))" } ?? message
         responseContinuations.values.forEach { $0.resume(throwing: RemoteError.network(message)) }
         responseContinuations.removeAll()
         if !isConnected, !attemptedFallback {
             attemptedFallback = true
-            logger.warning("Échec WSS, fallback WS: \(message, privacy: .public)")
+            logger.warning("Échec WSS, fallback WS (raison: \(details, privacy: .public))")
             connect(usingSecureSocket: false)
             return
         }
-        logger.error("Erreur réseau WebOS: \(message, privacy: .public)")
-        transitionToError(message)
+        logger.error("Erreur réseau WebOS: \(details, privacy: .public)")
+        transitionToError(details)
     }
 
     public func didDisconnect() {
         state = .disconnected
+        logger.info("Déconnexion WebOS confirmée")
     }
 }
