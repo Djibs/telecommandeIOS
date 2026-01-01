@@ -19,6 +19,7 @@ public final class LGWebOSDriver: TVDriver {
 
     let controller: LGWebOSControlling
     private let appResolver: LGAppResolver
+    private let logger = AppLogger.lgWebOS
 
     public init(device: DiscoveredDevice, controller: LGWebOSControlling? = nil, appResolver: LGAppResolver? = nil) {
         self.device = device
@@ -45,6 +46,7 @@ public final class LGWebOSDriver: TVDriver {
     }
 
     public func connect() async throws {
+        logger.info("LGWebOSDriver connect \(device.ipAddress, privacy: .public)")
         try await controller.ensureReady(pairingType: nil)
         Task {
             try? await appResolver.refreshInstalledApps()
@@ -52,10 +54,12 @@ public final class LGWebOSDriver: TVDriver {
     }
 
     public func disconnect() {
+        logger.info("LGWebOSDriver disconnect \(device.ipAddress, privacy: .public)")
         controller.disconnect()
     }
 
     public func send(command: RemoteCommand) async throws {
+        AppLogger.debugIfVerbose("LGWebOS send command \(String(describing: command), privacy: .public)", logger: logger)
         switch command {
         case .power:
             controller.send(.turnOff)
@@ -100,16 +104,19 @@ public final class LGWebOSDriver: TVDriver {
 
     public func sendText(_ text: String) async throws {
         guard !text.isEmpty else { return }
+        logger.info("LGWebOS sendText (\(text.count, privacy: .public) caractères)")
         controller.send(.insertText(text: text, replace: true))
         controller.send(.sendEnterKey)
     }
 
     public func launch(app: LaunchableApp) async throws {
         if let streamingApp = streamingAppFor(app) {
+            logger.info("LGWebOS launch streaming \(streamingApp.rawValue, privacy: .public)")
             try await appResolver.launch(streamingApp: streamingApp)
             return
         }
         guard let appId = appIdFor(app) else { throw RemoteError.unsupported }
+        logger.info("LGWebOS launch appId \(appId, privacy: .public)")
         controller.send(.launchApp(appId: appId))
     }
 
