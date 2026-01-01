@@ -1,2 +1,2 @@
 # telecommandeIOS
-télecommande universelle pour ios
+télecommande universelle pour ios (compatible LG, Tizen,...-
