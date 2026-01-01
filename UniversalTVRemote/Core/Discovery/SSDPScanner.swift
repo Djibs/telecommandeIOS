@@ -33,9 +33,13 @@ public final class SSDPScanner: SSDPScanning {
 
         let endDate = Date().addingTimeInterval(timeout)
         while Date() < endDate {
+            let remaining = endDate.timeIntervalSinceNow
+            guard remaining > 0 else { break }
             do {
-                let response = try await receiveOnce(from: connection)
-                if let responseData = response {
+                let response = try await withTimeout(remaining) {
+                    try await receiveOnce(from: connection)
+                }
+                if let responseData = response ?? nil {
                     let headers = parseSSDPResponse(responseData)
                     if let location = headers["LOCATION"],
                        let device = buildDevice(from: headers, location: location) {

@@ -11,6 +11,7 @@ struct UniversalTVRemoteApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(appState)
+                .environmentObject(appState.discoveryViewModel)
                 .environmentObject(themeManager)
                 .preferredColorScheme(themeManager.selectedTheme.colorScheme)
                 .accentColor(themeManager.selectedTheme.accentColor)
