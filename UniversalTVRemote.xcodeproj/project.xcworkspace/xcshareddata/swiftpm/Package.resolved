@@ -1,0 +1,15 @@
+{
+  "originHash" : "d6422a2e6add37f30b3f00a5eb9f0debc26f4b668ae340e9f2d19c7944f84342",
+  "pins" : [
+    {
+      "identity" : "webosclient",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jareksedy/WebOSClient.git",
+      "state" : {
+        "revision" : "754990e6a8321ebaba3f3bf8ff3c90c19e9f9719",
+        "version" : "1.5.1"
+      }
+    }
+  ],
+  "version" : 3
+}

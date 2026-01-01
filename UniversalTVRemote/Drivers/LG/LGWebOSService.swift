@@ -1,5 +1,6 @@
 // File: Drivers/LG/LGWebOSService.swift
 
+import Combine
 import Foundation
 import WebOSClient
 import os
