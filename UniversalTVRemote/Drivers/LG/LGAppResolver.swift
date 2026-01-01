@@ -2,7 +2,6 @@
 
 import Foundation
 import WebOSClient
-import os
 import Combine
 
 public enum LGAppResolverError: LocalizedError {
@@ -35,7 +34,7 @@ public final class LGAppResolver: ObservableObject {
 
     private let service: LGWebOSRequesting
     private let cache: LGAppCaching
-    private let logger = Logger(subsystem: "UniversalTVRemote", category: "LGWebOS")
+    private let logger = AppLogger.lgWebOS
 
     private let titleMap: [StreamingApp: [String]] = [
         .netflix: ["Netflix"],
@@ -64,13 +63,14 @@ public final class LGAppResolver: ObservableObject {
         guard case .ready = service.state else {
             throw LGAppResolverError.notReady
         }
+        logger.info("listApps démarré")
         let response = try await service.sendRequest(.listApps)
         let apps = response.payload?.applications ?? []
         let installedApps = apps.compactMap { app -> LGInstalledApp? in
             guard let id = app.id, let title = app.title else { return nil }
             return LGInstalledApp(id: id, title: title)
         }
-        logger.info("LG listApps: \(installedApps.count, privacy: .public) apps")
+        logger.info("listApps terminé: \(installedApps.count, privacy: .public) apps")
         updateAvailableApps(from: installedApps)
         isLoaded = true
         return installedApps
@@ -87,6 +87,7 @@ public final class LGAppResolver: ObservableObject {
             cache.setCachedAppId(match, for: streamingApp, tvIdentifier: tvIdentifier)
             return match
         }
+        logger.info("Aucun appId trouvé via listApps pour \(streamingApp.rawValue, privacy: .public)")
         return nil
     }
 
@@ -108,6 +109,7 @@ public final class LGAppResolver: ObservableObject {
         }
 
         if let resolved = await resolveFromListApps(streamingApp: streamingApp) {
+            logger.info("AppId résolu \(resolved, privacy: .public) pour \(streamingApp.rawValue, privacy: .public)")
             cache.setCachedAppId(resolved, for: streamingApp, tvIdentifier: tvIdentifier)
             try await launchAppId(resolved)
             availableApps.insert(streamingApp)
@@ -127,6 +129,7 @@ public final class LGAppResolver: ObservableObject {
                 }
             }
         }
+        logger.error("App introuvable: \(streamingApp.rawValue, privacy: .public)")
         throw LGAppResolverError.appNotFound
     }
 
