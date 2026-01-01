@@ -11,6 +11,7 @@ public protocol SSDPScanning {
 public final class SSDPScanner: SSDPScanning {
     private let multicastHost = NWEndpoint.Host("239.255.255.250")
     private let multicastPort = NWEndpoint.Port(rawValue: 1900)!
+    private let logger = AppLogger.discovery
 
     public init() {}
 
@@ -18,9 +19,11 @@ public final class SSDPScanner: SSDPScanning {
         let parameters = NWParameters.udp
         let connection = NWConnection(host: multicastHost, port: multicastPort, using: parameters)
         var results: [DiscoveredDevice] = []
+        var responsesReceived = 0
         let queue = DispatchQueue(label: "ssdp-scanner")
 
         connection.start(queue: queue)
+        logger.info("SSDP startScan (timeout \(timeout, privacy: .public)s)")
         let message = "M-SEARCH * HTTP/1.1\r\n" +
         "HOST: 239.255.255.250:1900\r\n" +
         "MAN: \"ssdp:discover\"\r\n" +
@@ -40,18 +43,23 @@ public final class SSDPScanner: SSDPScanning {
                     try await receiveOnce(from: connection)
                 }
                 if let responseData = response ?? nil {
+                    responsesReceived += 1
                     let headers = parseSSDPResponse(responseData)
                     if let location = headers["LOCATION"],
                        let device = buildDevice(from: headers, location: location) {
                         results.append(device)
                     }
+                } else {
+                    AppLogger.debugIfVerbose("SSDP timeout sans réponse", logger: logger)
                 }
             } catch {
+                logger.error("Erreur socket SSDP: \(error.localizedDescription, privacy: .public)")
                 break
             }
         }
 
         connection.cancel()
+        logger.info("SSDP stopScan (réponses \(responsesReceived, privacy: .public), appareils \(results.count, privacy: .public))")
         return Array(Set(results))
     }
 
@@ -103,6 +111,11 @@ public final class SSDPScanner: SSDPScanning {
         let port = URL(string: location)?.port
         let defaultName = headers["SERVER"] ?? headers["LOCATION"] ?? "Appareil SSDP"
         let name = type == .lgWebOS ? "LG webOS TV \(host)" : defaultName
+        if type == .lgWebOS {
+            let truncatedSt = AppLogger.truncate(st, maxLength: 80)
+            let truncatedUsn = AppLogger.truncate(usn, maxLength: 80)
+            logger.info("LG webOS détectée \(host, privacy: .public) st=\(truncatedSt, privacy: .public) usn=\(truncatedUsn, privacy: .public)")
+        }
         return DiscoveredDevice(name: name, ipAddress: host, port: port, type: type, metadata: headers)
     }
 
