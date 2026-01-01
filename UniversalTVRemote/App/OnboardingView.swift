@@ -4,6 +4,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var discoveryViewModel: DeviceDiscoveryViewModel
     @EnvironmentObject private var themeManager: ThemeManager
     @State private var showingManualEntry = false
     @State private var manualIPAddress = ""
@@ -14,12 +15,12 @@ struct OnboardingView: View {
                 Text("Ajouter un appareil")
                     .font(.title2.bold())
 
-                if appState.discoveryViewModel.isScanning {
+                if discoveryViewModel.isScanning {
                     ProgressView("Scan du réseau local…")
                 }
 
                 Button(action: {
-                    Task { await appState.discoveryViewModel.scan() }
+                    Task { await discoveryViewModel.scan() }
                 }) {
                     Label("Scanner le réseau", systemImage: "magnifyingglass")
                 }
@@ -32,12 +33,12 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.bordered)
 
-                if let error = appState.discoveryViewModel.error {
+                if let error = discoveryViewModel.error {
                     Text(error.localizedDescription)
                         .foregroundColor(.red)
                 }
 
-                List(appState.discoveryViewModel.devices) { device in
+                List(discoveryViewModel.devices) { device in
                     HStack {
                         VStack(alignment: .leading) {
                             Text(device.name)
@@ -84,7 +85,7 @@ struct OnboardingView: View {
                                 ipAddress: ip,
                                 type: .lgWebOS
                             )
-                            appState.discoveryViewModel.addManualDevice(device)
+                            discoveryViewModel.addManualDevice(device)
                             showingManualEntry = false
                             manualIPAddress = ""
                         }
