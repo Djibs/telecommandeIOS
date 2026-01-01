@@ -34,7 +34,7 @@ public final class CommandRouter: CommandRouting {
             logger.info("Commande \(String(describing: command), privacy: .public) envoyée en \(String(format: "%.2f", latency), privacy: .public)s")
             AppLogger.debugIfVerbose("Fin commande \(command) à \(endTimestamp)", logger: logger)
         } catch {
-            logger.error("Erreur commande \(String(describing: command), privacy: .public) vers \(driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("Erreur commande \(String(describing: command), privacy: .public) vers \(self.driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
             throw error
         }
     }
@@ -42,7 +42,7 @@ public final class CommandRouter: CommandRouting {
     public func sendText(_ text: String) async throws {
         let start = Date()
         let length = text.count
-        AppLogger.debugIfVerbose("Début sendText (\(length, privacy: .public) caractères)", logger: logger)
+        AppLogger.debugIfVerbose("Début sendText (\(length) caractères)", logger: logger)
         if !driver.capabilities.contains(.textInput) {
             logger.warning("Capability manquante textInput pour sendText (\(length, privacy: .public) caractères)")
         }
@@ -51,14 +51,14 @@ public final class CommandRouter: CommandRouting {
             let latency = Date().timeIntervalSince(start)
             logger.info("sendText envoyé (\(length, privacy: .public) caractères) en \(String(format: "%.2f", latency), privacy: .public)s")
         } catch {
-            logger.error("Erreur sendText vers \(driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("Erreur sendText vers \(self.driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
             throw error
         }
     }
 
     public func launch(app: LaunchableApp) async throws {
         let start = Date()
-        AppLogger.debugIfVerbose("Début launch \(app.rawValue, privacy: .public)", logger: logger)
+        AppLogger.debugIfVerbose("Début launch \(app.rawValue)", logger: logger)
         if !driver.capabilities.contains(.launcher) {
             logger.warning("Capability manquante launcher pour launch \(app.rawValue, privacy: .public)")
         }
@@ -67,14 +67,14 @@ public final class CommandRouter: CommandRouting {
             let latency = Date().timeIntervalSince(start)
             logger.info("launch \(app.rawValue, privacy: .public) en \(String(format: "%.2f", latency), privacy: .public)s")
         } catch {
-            logger.error("Erreur launch \(app.rawValue, privacy: .public) vers \(driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("Erreur launch \(app.rawValue, privacy: .public) vers \(self.driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
             throw error
         }
     }
 
     public func castMedia(url: URL, type: MediaType) async throws {
         let start = Date()
-        AppLogger.debugIfVerbose("Début cast \(type.rawValue, privacy: .public)", logger: logger)
+        AppLogger.debugIfVerbose("Début cast \(type.rawValue)", logger: logger)
         if !driver.capabilities.contains(.casting) {
             logger.warning("Capability manquante casting pour cast \(type.rawValue, privacy: .public)")
         }
@@ -83,7 +83,7 @@ public final class CommandRouter: CommandRouting {
             let latency = Date().timeIntervalSince(start)
             logger.info("cast \(type.rawValue, privacy: .public) en \(String(format: "%.2f", latency), privacy: .public)s")
         } catch {
-            logger.error("Erreur cast \(type.rawValue, privacy: .public) vers \(driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("Erreur cast \(type.rawValue, privacy: .public) vers \(self.driver.device.ipAddress, privacy: .public): \(error.localizedDescription, privacy: .public)")
             throw error
         }
     }

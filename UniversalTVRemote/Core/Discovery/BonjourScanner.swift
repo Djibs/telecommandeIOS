@@ -56,7 +56,7 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
             metadata: ["BonjourType": sender.type]
         )
         devices.append(device)
-        AppLogger.debugIfVerbose("Bonjour service résolu \(sender.name, privacy: .public) \(host, privacy: .public)", logger: logger)
+        AppLogger.debugIfVerbose("Bonjour service résolu \(sender.name) \(host,)", logger: logger)
     }
 
     public func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {

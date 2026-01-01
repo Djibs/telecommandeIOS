@@ -47,7 +47,7 @@ public final class LGWebOSDriver: TVDriver {
     }
 
     public func connect() async throws {
-        logger.info("LGWebOSDriver connect \(device.ipAddress, privacy: .public)")
+        logger.info("LGWebOSDriver connect \(self.device.ipAddress, privacy: .public)")
         try await controller.ensureReady(pairingType: nil)
         Task {
             try? await appResolver.refreshInstalledApps()
@@ -55,12 +55,12 @@ public final class LGWebOSDriver: TVDriver {
     }
 
     public func disconnect() {
-        logger.info("LGWebOSDriver disconnect \(device.ipAddress, privacy: .public)")
+        logger.info("LGWebOSDriver disconnect \(self.device.ipAddress, privacy: .public)")
         controller.disconnect()
     }
 
     public func send(command: RemoteCommand) async throws {
-        AppLogger.debugIfVerbose("LGWebOS send command \(String(describing: command), privacy: .public)", logger: logger)
+        AppLogger.debugIfVerbose("LGWebOS send command \(String(describing: command))", logger: logger)
         switch command {
         case .power:
             controller.send(.turnOff)

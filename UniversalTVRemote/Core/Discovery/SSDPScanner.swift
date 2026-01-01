@@ -41,7 +41,7 @@ public final class SSDPScanner: SSDPScanning {
             guard remaining > 0 else { break }
             do {
                 let response = try await withTimeout(remaining) {
-                    try await receiveOnce(from: connection)
+                    try await self.receiveOnce(from: connection)
                 }
                 if let responseData = response ?? nil {
                     responsesReceived += 1

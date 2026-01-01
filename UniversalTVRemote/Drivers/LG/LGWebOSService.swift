@@ -156,7 +156,7 @@ public final class LGWebOSService: NSObject, ObservableObject, LGWebOSControllin
         state = .registering
         let clientKeyData = (try? keychainStore.get(keychainKey)) ?? nil
         let clientKey = clientKeyData.flatMap { String(data: $0, encoding: .utf8) }
-        logger.info("Register WebOS (pairing \(currentPairingType.rawValue, privacy: .public))")
+        logger.info("Register WebOS (pairing \(self.currentPairingType.rawValue, privacy: .public))")
         logger.info("État WebOS: registering")
         client?.send(.register(pairingType: currentPairingType, clientKey: clientKey))
     }
