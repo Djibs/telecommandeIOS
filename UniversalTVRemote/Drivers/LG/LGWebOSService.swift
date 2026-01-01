@@ -3,6 +3,7 @@
 import Combine
 import Foundation
 import WebOSClient
+import OSLog
 
 @MainActor
 public enum LGWebOSConnectionState: Equatable {

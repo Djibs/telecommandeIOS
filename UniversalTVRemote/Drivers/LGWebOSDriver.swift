@@ -3,6 +3,7 @@
 import Foundation
 import WebOSClient
 import Combine
+import OSLog
 
 public final class LGWebOSDriver: TVDriver {
     public let device: DiscoveredDevice

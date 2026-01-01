@@ -1,6 +1,7 @@
 // File: Core/Discovery/BonjourScanner.swift
 
 import Foundation
+import OSLog
 
 public protocol BonjourScanning {
     func scan(timeout: TimeInterval) async -> [DiscoveredDevice]

@@ -3,6 +3,7 @@
 import Foundation
 import WebOSClient
 import Combine
+import OSLog
 
 public enum LGAppResolverError: LocalizedError {
     case notReady

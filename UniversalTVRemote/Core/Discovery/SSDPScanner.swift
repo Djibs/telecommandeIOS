@@ -2,6 +2,7 @@
 
 import Foundation
 import Network
+import OSLog
 
 public protocol SSDPScanning {
     func scan(timeout: TimeInterval) async -> [DiscoveredDevice]

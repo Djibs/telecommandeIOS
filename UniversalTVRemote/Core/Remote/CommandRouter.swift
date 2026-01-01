@@ -1,6 +1,7 @@
 // File: Core/Remote/CommandRouter.swift
 
 import Foundation
+import OSLog
 
 public protocol CommandRouting {
     func send(command: RemoteCommand) async throws
