@@ -15,9 +15,17 @@ public final class CompositeDiscoveryService: DeviceDiscoveryService {
         self.bonjourScanner = bonjourScanner
     }
 
+    public static var defaultBonjourTimeout: TimeInterval {
+#if DEBUG
+        9.0
+#else
+        3.0
+#endif
+    }
+
     public func scan() async -> [DiscoveredDevice] {
         async let ssdp = ssdpScanner.scan(timeout: 3.0)
-        async let bonjour = bonjourScanner.scan(timeout: 3.0)
+        async let bonjour = bonjourScanner.scan(timeout: Self.defaultBonjourTimeout)
         let devices = await (ssdp + bonjour)
         return Array(Set(devices))
     }
