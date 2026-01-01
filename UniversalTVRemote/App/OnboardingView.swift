@@ -5,6 +5,8 @@ import SwiftUI
 struct OnboardingView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var themeManager: ThemeManager
+    @State private var showingManualEntry = false
+    @State private var manualIPAddress = ""
 
     var body: some View {
         NavigationView {
@@ -22,6 +24,13 @@ struct OnboardingView: View {
                     Label("Scanner le réseau", systemImage: "magnifyingglass")
                 }
                 .buttonStyle(.borderedProminent)
+
+                Button(action: {
+                    showingManualEntry = true
+                }) {
+                    Label("Saisie IP manuelle", systemImage: "pencil")
+                }
+                .buttonStyle(.bordered)
 
                 if let error = appState.discoveryViewModel.error {
                     Text(error.localizedDescription)
@@ -52,6 +61,36 @@ struct OnboardingView: View {
             }
             .padding()
             .navigationTitle("Découverte")
+        }
+        .sheet(isPresented: $showingManualEntry) {
+            NavigationView {
+                Form {
+                    Section(header: Text("LG webOS")) {
+                        TextField("Adresse IP", text: $manualIPAddress)
+                            .keyboardType(.numbersAndPunctuation)
+                    }
+                }
+                .navigationTitle("Ajout manuel")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Annuler") { showingManualEntry = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Ajouter") {
+                            let ip = manualIPAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !ip.isEmpty else { return }
+                            let device = DiscoveredDevice(
+                                name: "LG webOS TV \(ip)",
+                                ipAddress: ip,
+                                type: .lgWebOS
+                            )
+                            appState.discoveryViewModel.addManualDevice(device)
+                            showingManualEntry = false
+                            manualIPAddress = ""
+                        }
+                    }
+                }
+            }
         }
     }
 }

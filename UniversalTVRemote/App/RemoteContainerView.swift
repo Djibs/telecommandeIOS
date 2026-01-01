@@ -6,8 +6,12 @@ struct RemoteContainerView: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        if let driver = appState.driverForSelectedDevice() {
-            RemoteView(viewModel: RemoteViewModel(driver: driver))
+        if let driver = appState.selectedDriver {
+            if let lgDriver = driver as? LGWebOSDriver {
+                LGPairingContainerView(driver: lgDriver)
+            } else {
+                RemoteView(viewModel: RemoteViewModel(driver: driver))
+            }
         } else {
             VStack(spacing: 12) {
                 Text("Sélectionnez un appareil dans l'onglet Appareils.")

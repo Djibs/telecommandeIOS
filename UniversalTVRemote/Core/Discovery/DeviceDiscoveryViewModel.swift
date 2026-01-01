@@ -26,4 +26,10 @@ public final class DeviceDiscoveryViewModel: ObservableObject {
         devices = results
         isScanning = false
     }
+
+    public func addManualDevice(_ device: DiscoveredDevice) {
+        if !devices.contains(device) {
+            devices.append(device)
+        }
+    }
 }

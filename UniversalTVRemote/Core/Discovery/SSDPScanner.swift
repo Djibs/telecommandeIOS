@@ -97,7 +97,8 @@ public final class SSDPScanner: SSDPScanning {
         let type = inferType(st: st, usn: usn)
         guard let host = URL(string: location)?.host else { return nil }
         let port = URL(string: location)?.port
-        let name = headers["SERVER"] ?? headers["LOCATION"] ?? "Appareil SSDP"
+        let defaultName = headers["SERVER"] ?? headers["LOCATION"] ?? "Appareil SSDP"
+        let name = type == .lgWebOS ? "LG webOS TV \(host)" : defaultName
         return DiscoveredDevice(name: name, ipAddress: host, port: port, type: type, metadata: headers)
     }
 
@@ -105,6 +106,7 @@ public final class SSDPScanner: SSDPScanning {
         let lower = (st + usn).lowercased()
         if lower.contains("roku") { return .roku }
         if lower.contains("google") || lower.contains("chromecast") { return .chromecast }
+        if lower.contains("urn:lge-com:service:webos-second-screen:1") { return .lgWebOS }
         if lower.contains("dlna") || lower.contains("upnp") { return .dlnaGeneric }
         return .unknown
     }
