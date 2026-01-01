@@ -94,11 +94,11 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
     }
 
     public func netServiceBrowserWillSearch(_ browser: NetServiceBrowser) {
-        logger.info("Bonjour willSearch scanId=\(self.activeScanId, privacy: .public) type=\(browserType(for: browser), privacy: .public)")
+        logger.info("Bonjour willSearch scanId=\(self.activeScanId, privacy: .public) type=\(self.browserType(for: browser), privacy: .public)")
     }
 
     public func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) {
-        logger.info("Bonjour didStopSearch scanId=\(self.activeScanId, privacy: .public) type=\(browserType(for: browser), privacy: .public)")
+        logger.info("Bonjour didStopSearch scanId=\(self.activeScanId, privacy: .public) type=\(self.browserType(for: browser), privacy: .public)")
     }
 
     public func netServiceDidResolveAddress(_ sender: NetService) {
@@ -127,7 +127,7 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
     }
 
     public func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String: NSNumber]) {
-        logger.error("Bonjour search error scanId=\(self.activeScanId, privacy: .public) type=\(browserType(for: browser), privacy: .public): \(errorDict.description, privacy: .public)")
+        logger.error("Bonjour search error scanId=\(self.activeScanId, privacy: .public) type=\(self.browserType(for: browser), privacy: .public): \(errorDict.description, privacy: .public)")
         finishScan(reason: "didNotSearch")
     }
 
