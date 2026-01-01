@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9A19A32B2FF0B2C300F0A1A1 /* WebOSClient in Frameworks */ = {isa = PBXBuildFile; productRef = 9A19A32A2FF0B2C300F0A1A1 /* WebOSClient */; };
+		9A19A32C2FF0B2C300F0A1A1 /* WebOSClient in Frameworks */ = {isa = PBXBuildFile; productRef = 9A19A32A2FF0B2C300F0A1A1 /* WebOSClient */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		491800432F06FD1D004EEF79 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -22,11 +27,6 @@
 			remoteInfo = UniversalTVRemote;
 		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXBuildFile section */
-		9A19A32B2FF0B2C300F0A1A1 /* WebOSClient in Frameworks */ = {isa = PBXBuildFile; productRef = 9A19A32A2FF0B2C300F0A1A1 /* WebOSClient */; };
-		9A19A32C2FF0B2C300F0A1A1 /* WebOSClient in Frameworks */ = {isa = PBXBuildFile; productRef = 9A19A32A2FF0B2C300F0A1A1 /* WebOSClient */; };
-/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		491800352F06FD1B004EEF79 /* UniversalTVRemote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UniversalTVRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -231,25 +231,6 @@
 			);
 		};
 /* End PBXProject section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		9A19A32A2FF0B2C300F0A1A1 /* WebOSClient */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9A19A3292FF0B2C300F0A1A1 /* XCRemoteSwiftPackageReference "WebOSClient" */;
-			productName = WebOSClient;
-		};
-/* End XCSwiftPackageProductDependency section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		9A19A3292FF0B2C300F0A1A1 /* XCRemoteSwiftPackageReference "WebOSClient" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/jareksedy/WebOSClient.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.5.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
 
 /* Begin PBXResourcesBuildPhase section */
 		491800332F06FD1B004EEF79 /* Resources */ = {
@@ -632,6 +613,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9A19A3292FF0B2C300F0A1A1 /* XCRemoteSwiftPackageReference "WebOSClient" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jareksedy/WebOSClient.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9A19A32A2FF0B2C300F0A1A1 /* WebOSClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9A19A3292FF0B2C300F0A1A1 /* XCRemoteSwiftPackageReference "WebOSClient" */;
+			productName = WebOSClient;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4918002D2F06FD1B004EEF79 /* Project object */;
 }

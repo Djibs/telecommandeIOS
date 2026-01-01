@@ -19,14 +19,17 @@ final class AppState: ObservableObject {
     private let userDefaults: UserDefaults
 
     init(
-        discoveryService: DeviceDiscoveryService = CompositeDiscoveryService(),
-        driverRegistry: DriverRegistry = DefaultDriverRegistry(),
-        userDefaults: UserDefaults = .standard
-    ) {
-        self.discoveryViewModel = DeviceDiscoveryViewModel(discoveryService: discoveryService)
-        self.driverRegistry = driverRegistry
-        self.userDefaults = userDefaults
-    }
+            discoveryService: DeviceDiscoveryService? = nil,
+            driverRegistry: DriverRegistry? = nil,
+            userDefaults: UserDefaults = .standard
+        ) {
+            let service = discoveryService ?? CompositeDiscoveryService.makeDefault()
+            let registry = driverRegistry ?? DefaultDriverRegistry()
+
+            self.discoveryViewModel = DeviceDiscoveryViewModel(discoveryService: service)
+            self.driverRegistry = registry
+            self.userDefaults = userDefaults
+        }
 
     func driverForSelectedDevice() -> TVDriver? {
         selectedDriver

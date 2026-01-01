@@ -10,9 +10,20 @@ public final class CompositeDiscoveryService: DeviceDiscoveryService {
     private let ssdpScanner: SSDPScanning
     private let bonjourScanner: BonjourScanning
 
-    public init(ssdpScanner: SSDPScanning = SSDPScanner(), bonjourScanner: BonjourScanning = BonjourScanner()) {
+    public init(
+        ssdpScanner: SSDPScanning = SSDPScanner(),
+        bonjourScanner: BonjourScanning
+    ) {
         self.ssdpScanner = ssdpScanner
         self.bonjourScanner = bonjourScanner
+    }
+
+    @MainActor
+    public static func makeDefault() -> CompositeDiscoveryService {
+        CompositeDiscoveryService(
+            ssdpScanner: SSDPScanner(),
+            bonjourScanner: BonjourScanner()
+        )
     }
 
     public static var defaultBonjourTimeout: TimeInterval {

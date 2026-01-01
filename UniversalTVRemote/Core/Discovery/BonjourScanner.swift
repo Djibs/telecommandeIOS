@@ -19,12 +19,12 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
     private var activeScanId = 0
     private let logger = AppLogger.discovery
 
-    public static var defaultTimeout: TimeInterval {
-#if DEBUG
+    public nonisolated static var defaultTimeout: TimeInterval {
+    #if DEBUG
         9.0
-#else
+    #else
         3.0
-#endif
+    #endif
     }
 
     public func scan(timeout: TimeInterval = BonjourScanner.defaultTimeout) async -> [DiscoveredDevice] {
@@ -35,7 +35,7 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
 
     private func startScan(timeout: TimeInterval, continuation: CheckedContinuation<[DiscoveredDevice], Never>) {
         if isSearching {
-            logger.info("Bonjour scan déjà actif scanId=\(activeScanId, privacy: .public) - arrêt avant relance")
+            logger.info("Bonjour scan déjà actif scanId=\(self.activeScanId, privacy: .public) - arrêt avant relance")
             finishScan(reason: "relance")
         }
         services = []
@@ -47,7 +47,7 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
         self.continuation = continuation
         isSearching = true
         browser.delegate = self
-        logger.info("Bonjour startScan scanId=\(activeScanId, privacy: .public) (timeout \(timeout, privacy: .public)s)")
+        logger.info("Bonjour startScan scanId=\(self.activeScanId, privacy: .public) (timeout \(timeout, privacy: .public)s)")
         browser.searchForServices(ofType: "_roku._tcp.", inDomain: "local.")
         browser.searchForServices(ofType: "_googlecast._tcp.", inDomain: "local.")
 
@@ -67,7 +67,7 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
         timeoutWorkItem?.cancel()
         timeoutWorkItem = nil
         isSearching = false
-        logger.info("Bonjour stopScan scanId=\(currentScanId, privacy: .public) reason=\(reason, privacy: .public) (appareils \(devices.count, privacy: .public))")
+        logger.info("Bonjour stopScan scanId=\(currentScanId, privacy: .public) reason=\(reason, privacy: .public) (appareils \(self.devices.count, privacy: .public))")
         continuation?.resume(returning: devices)
         continuation = nil
     }
@@ -100,10 +100,10 @@ public final class BonjourScanner: NSObject, BonjourScanning, NetServiceBrowserD
     }
 
     public func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
-        logger.error("Bonjour resolve error scanId=\(activeScanId, privacy: .public) \(sender.name, privacy: .public): \(errorDict.description, privacy: .public)")
+        logger.error("Bonjour resolve error scanId=\(self.activeScanId, privacy: .public) \(sender.name, privacy: .public): \(errorDict.description, privacy: .public)")
     }
 
     public func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String: NSNumber]) {
-        logger.error("Bonjour search error scanId=\(activeScanId, privacy: .public): \(errorDict.description, privacy: .public)")
+        logger.error("Bonjour search error scanId=\(self.activeScanId, privacy: .public): \(errorDict.description, privacy: .public)")
     }
 }
