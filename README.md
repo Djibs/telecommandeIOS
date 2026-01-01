@@ -19,9 +19,9 @@ Application iOS de télécommande universelle pour TV/box via réseau local.
 
 ## Configuration Xcode
 
-1. Ouvre `UniversalTVRemote.xcodeproj` dans Xcode.
+1. Ouvre `UniversalTVRemote.xcodeproj` dans Xcode (la racine contient le projet et le README).
 2. Vérifie l’identifiant de bundle et l’équipe de signature si besoin.
-3. Les dossiers `App/`, `Core/`, `Drivers/` et `Tests/` sont déjà intégrés aux targets.
+3. Les sources sont organisées dans `UniversalTVRemote/` et les tests dans `UniversalTVRemoteTests/` (structure Xcode classique).
 4. Les frameworks système requis sont utilisés via `import` (Speech, AVFoundation, PhotosUI, Network).
 
 ## Permissions iOS (Info.plist)
