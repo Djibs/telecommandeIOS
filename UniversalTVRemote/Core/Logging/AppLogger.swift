@@ -1,7 +1,7 @@
 // File: Core/Logging/AppLogger.swift
 
 import Foundation
-import os
+import OSLog
 
 public enum LogCategory: String {
     case discovery
