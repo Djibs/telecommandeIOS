@@ -1,6 +1,7 @@
 // File: Tests/SSDPParsingTests.swift
 
 import XCTest
+import Network
 @testable import UniversalTVRemote
 
 final class SSDPParsingTests: XCTestCase {
@@ -38,5 +39,48 @@ final class SSDPParsingTests: XCTestCase {
         let headers = scanner.parseSSDPResponse(data)
         XCTAssertEqual(headers["ST"], "roku:ecp")
         XCTAssertEqual(headers["LOCATION"], "http://192.168.1.2:8060")
+    }
+
+    func testBuildDeviceUsesLocationHostForLG() {
+        let scanner = SSDPScanner()
+        let headers = [
+            "ST": "urn:lge-com:service:webos-second-screen:1",
+            "LOCATION": "http://192.168.1.50:3000",
+            "SERVER": "webOS"
+        ]
+
+        let device = scanner.buildDevice(from: headers, remoteEndpoint: nil)
+
+        XCTAssertEqual(device?.type, .lgWebOS)
+        XCTAssertEqual(device?.ipAddress, "192.168.1.50")
+        XCTAssertEqual(device?.port, 3001)
+        XCTAssertEqual(device?.name, "LG webOS TV")
+    }
+
+    func testBuildDeviceFallsBackToRemoteEndpointWhenLocationMissing() {
+        let scanner = SSDPScanner()
+        let headers = [
+            "ST": "urn:lge-com:service:webos-second-screen:1",
+            "SERVER": "webOS"
+        ]
+        let endpoint = NWEndpoint.hostPort(host: "10.0.0.20", port: 1900)
+
+        let device = scanner.buildDevice(from: headers, remoteEndpoint: endpoint)
+
+        XCTAssertEqual(device?.ipAddress, "10.0.0.20")
+        XCTAssertEqual(device?.type, .lgWebOS)
+        XCTAssertEqual(device?.port, 3001)
+    }
+
+    func testBuildDeviceReturnsNilWithoutLocationOrEndpoint() {
+        let scanner = SSDPScanner()
+        let headers = [
+            "ST": "urn:lge-com:service:webos-second-screen:1",
+            "SERVER": "webOS"
+        ]
+
+        let device = scanner.buildDevice(from: headers, remoteEndpoint: nil)
+
+        XCTAssertNil(device)
     }
 }

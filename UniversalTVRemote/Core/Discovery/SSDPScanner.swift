@@ -26,8 +26,33 @@ public final class SSDPScanner: SSDPScanning {
     public init() {}
 
     public func scan(timeout: TimeInterval = SSDPScanner.defaultTimeout) async -> [DiscoveredDevice] {
+        logger.info("SSDP startScan (timeout \(timeout, privacy: .public)s)")
+        guard let path = await currentNetworkPath() else {
+            logger.warning("SSDP scan annulé: impossible de récupérer l'état réseau")
+            return []
+        }
+
+        let interfaceDescription = pathInterfaceDescription(path)
+        logger.info(
+            "SSDP path status=\(path.status.logDescription, privacy: .public) supportsIPv4=\(path.supportsIPv4, privacy: .public) interface=\(interfaceDescription, privacy: .public)"
+        )
+
+        guard path.status == .satisfied, path.supportsIPv4 else {
+            logger.warning("SSDP scan annulé: réseau non satisfait ou IPv4 indisponible")
+            return []
+        }
+
         let parameters = NWParameters.udp
-        let connection = NWConnection(host: multicastHost, port: multicastPort, using: parameters)
+        let multicastEndpoint = NWEndpoint.hostPort(host: multicastHost, port: multicastPort)
+        let multicastGroup: NWMulticastGroup
+        do {
+            multicastGroup = try NWMulticastGroup(for: [multicastEndpoint])
+        } catch {
+            logger.error("SSDP erreur création multicast group: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+
+        let group = NWConnectionGroup(with: multicastGroup, using: parameters)
         var results: [DiscoveredDevice] = []
         var responsesReceived = 0
         var fallbackSent = false
@@ -35,48 +60,69 @@ public final class SSDPScanner: SSDPScanning {
         let fallbackDeadline = Date().addingTimeInterval(fallbackDelay)
         let queue = DispatchQueue(label: "ssdp-scanner")
 
-        connection.stateUpdateHandler = { [logger] state in
+        group.stateUpdateHandler = { [logger] state in
             switch state {
             case .setup:
-                logger.info("SSDP état connexion: setup")
+                logger.info("SSDP état groupe: setup")
             case .waiting(let error):
-                logger.warning("SSDP état connexion: waiting \(error.localizedDescription, privacy: .public)")
+                logger.warning("SSDP état groupe: waiting \(error.localizedDescription, privacy: .public)")
             case .ready:
-                logger.info("SSDP état connexion: ready")
+                logger.info("SSDP groupe ready")
             case .failed(let error):
-                logger.error("SSDP état connexion: failed \(error.localizedDescription, privacy: .public)")
+                logger.error("SSDP état groupe: failed \(error.localizedDescription, privacy: .public)")
             case .cancelled:
-                logger.info("SSDP état connexion: cancelled")
+                logger.info("SSDP état groupe: cancelled")
             @unknown default:
-                logger.warning("SSDP état connexion: inconnu")
+                logger.warning("SSDP état groupe: inconnu")
             }
         }
 
-        connection.start(queue: queue)
-        logger.info("SSDP startScan (timeout \(timeout, privacy: .public)s)")
-        sendSearchMessage(connection, searchTarget: lgServiceType)
+        let responsesStream = AsyncStream<SSDPResponse> { continuation in
+            group.setReceiveHandler(maximumMessageSize: 65_535, rejectOversizedMessages: true) { message, data, isComplete in
+                guard isComplete, let data else { return }
+                let remoteEndpoint = message?.remoteEndpoint
+                self.logger.info(
+                    "SSDP réponse reçue (octets \(data.count, privacy: .public)) remote=\(remoteEndpoint?.debugDescription ?? "unknown", privacy: .public)"
+                )
+                if let payload = String(data: data, encoding: .utf8) {
+                    let lines = payload
+                        .split(whereSeparator: \.isNewline)
+                        .prefix(3)
+                        .map { AppLogger.truncate(String($0), maxLength: 160) }
+                    if !lines.isEmpty {
+                        AppLogger.debugIfVerbose(
+                            "SSDP payload (3 lignes max): \(lines.joined(separator: " | "))",
+                            logger: self.logger
+                        )
+                    }
+                }
+                continuation.yield(SSDPResponse(data: data, remoteEndpoint: remoteEndpoint))
+            }
+        }
+
+        group.start(queue: queue)
+        sendSearchMessage(group, endpoint: multicastEndpoint, searchTarget: lgServiceType)
 
         let endDate = Date().addingTimeInterval(timeout)
+        var iterator = responsesStream.makeAsyncIterator()
         while Date() < endDate {
             let remaining = endDate.timeIntervalSinceNow
             guard remaining > 0 else { break }
 
             if !fallbackSent && responsesReceived == 0 && Date() >= fallbackDeadline {
-                sendSearchMessage(connection, searchTarget: "ssdp:all")
+                sendSearchMessage(group, endpoint: multicastEndpoint, searchTarget: "ssdp:all")
                 fallbackSent = true
             }
 
             do {
-                // withTimeout(T, op) retourne souvent T? ; receiveOnce retourne SSDPResponse?
-                // => résultat SSDPResponse?? (double optionnel) qu’on aplatit via `?? nil`
                 let response = try await withTimeout(remaining) {
-                    try await self.receiveOnce(from: connection)
+                    await iterator.next()
                 }
 
                 if let response = response ?? nil {
                     responsesReceived += 1
                     let headers = parseSSDPResponse(response.data)
-                    if let device = buildDevice(from: headers) {
+                    if let device = buildDevice(from: headers, remoteEndpoint: response.remoteEndpoint) {
                         results.append(device)
                     } else {
                         AppLogger.debugIfVerbose("SSDP réponse non parsée (LOCATION absente ou invalide)", logger: logger)
@@ -90,7 +136,7 @@ public final class SSDPScanner: SSDPScanning {
             }
         }
 
-        connection.cancel()
+        group.cancel()
 
         if responsesReceived == 0 {
             logger.info("SSDP aucune réponse reçue")
@@ -127,42 +173,12 @@ public final class SSDPScanner: SSDPScanning {
         return headers
     }
 
-    // MARK: - Private
-
     private struct SSDPResponse {
         let data: Data
+        let remoteEndpoint: NWEndpoint?
     }
 
-    private func receiveOnce(from connection: NWConnection) async throws -> SSDPResponse? {
-        try await withCheckedThrowingContinuation { continuation in
-            connection.receiveMessage { data, _, isComplete, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard isComplete, let data else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                self.logger.info("SSDP réponse reçue (octets \(data.count, privacy: .public))")
-                if let payload = String(data: data, encoding: .utf8) {
-                    let lines = payload
-                        .split(whereSeparator: \.isNewline)
-                        .prefix(3)
-                        .map { AppLogger.truncate(String($0), maxLength: 160) }
-                    if !lines.isEmpty {
-                        AppLogger.debugIfVerbose(
-                            "SSDP payload (3 lignes max): \(lines.joined(separator: " | "))",
-                            logger: self.logger
-                        )
-                    }
-                }
-                continuation.resume(returning: SSDPResponse(data: data))
-            }
-        }
-    }
-
-    private func buildDevice(from headers: [String: String]) -> DiscoveredDevice? {
+    func buildDevice(from headers: [String: String], remoteEndpoint: NWEndpoint?) -> DiscoveredDevice? {
         let st = headers["ST"] ?? ""
         let usn = headers["USN"] ?? ""
         let server = headers["SERVER"] ?? ""
@@ -170,14 +186,10 @@ public final class SSDPScanner: SSDPScanning {
 
         let type = inferType(st: st, usn: usn, server: server)
 
-        // SSDP: on déduit l’IP depuis LOCATION (le plus fiable ici)
-        guard !location.isEmpty else {
+        let host = extractHost(from: location, remoteEndpoint: remoteEndpoint)
+        guard let host else {
             let keys = headers.keys.sorted().joined(separator: ", ")
-            AppLogger.debugIfVerbose("SSDP LOCATION absente, headers présents: \(keys)", logger: logger)
-            return nil
-        }
-        guard let host = URL(string: location)?.host else {
-            AppLogger.debugIfVerbose("SSDP LOCATION invalide: \(location)", logger: logger)
+            AppLogger.debugIfVerbose("SSDP LOCATION absente/invalide, headers présents: \(keys)", logger: logger)
             return nil
         }
 
@@ -188,7 +200,9 @@ public final class SSDPScanner: SSDPScanning {
         if type == .lgWebOS {
             let truncatedSt = AppLogger.truncate(st, maxLength: 80)
             let truncatedUsn = AppLogger.truncate(usn, maxLength: 80)
-            logger.info("LG webOS détectée \(host, privacy: .public) st=\(truncatedSt, privacy: .public) usn=\(truncatedUsn, privacy: .public)")
+            logger.info(
+                "LG webOS détectée ip=\(host, privacy: .public) st=\(truncatedSt, privacy: .public) usn=\(truncatedUsn, privacy: .public)"
+            )
         }
 
         return DiscoveredDevice(
@@ -210,7 +224,7 @@ public final class SSDPScanner: SSDPScanning {
         return .unknown
     }
 
-    private func sendSearchMessage(_ connection: NWConnection, searchTarget: String) {
+    private func sendSearchMessage(_ group: NWConnectionGroup, endpoint: NWEndpoint, searchTarget: String) {
         let message =
             "M-SEARCH * HTTP/1.1\r\n" +
             "HOST: 239.255.255.250:1900\r\n" +
@@ -221,12 +235,58 @@ public final class SSDPScanner: SSDPScanning {
         guard let data = message.data(using: .utf8) else { return }
 
         logger.info("SSDP envoi recherche ST=\(searchTarget, privacy: .public)")
-        connection.send(content: data, completion: .contentProcessed { error in
+        group.send(content: data, to: endpoint, completion: .contentProcessed { error in
             if let error {
                 self.logger.error("SSDP send error: \(error.localizedDescription, privacy: .public)")
                 return
             }
             self.logger.info("SSDP envoi confirmé ST=\(searchTarget, privacy: .public)")
         })
+    }
+
+    private func extractHost(from location: String, remoteEndpoint: NWEndpoint?) -> String? {
+        if let host = URL(string: location)?.host {
+            return host
+        }
+        guard let remoteEndpoint else { return nil }
+        if case let .hostPort(host, _) = remoteEndpoint {
+            return host.debugDescription
+        }
+        return nil
+    }
+
+    private func currentNetworkPath() async -> NWPath? {
+        let monitor = NWPathMonitor()
+        let queue = DispatchQueue(label: "ssdp-path-monitor")
+        let path = await withTimeout(1.0) {
+            await withCheckedContinuation { continuation in
+                monitor.pathUpdateHandler = { updatedPath in
+                    continuation.resume(returning: updatedPath)
+                    monitor.cancel()
+                }
+                monitor.start(queue: queue)
+            }
+        }
+        return path ?? nil
+    }
+
+    private func pathInterfaceDescription(_ path: NWPath) -> String {
+        if path.usesInterfaceType(.wifi) { return "wifi" }
+        if path.usesInterfaceType(.wiredEthernet) { return "wiredEthernet" }
+        if path.usesInterfaceType(.cellular) { return "cellular" }
+        if path.usesInterfaceType(.loopback) { return "loopback" }
+        if path.usesInterfaceType(.other) { return "other" }
+        return "unknown"
+    }
+}
+
+private extension NWPath.Status {
+    var logDescription: String {
+        switch self {
+        case .satisfied: return "satisfied"
+        case .unsatisfied: return "unsatisfied"
+        case .requiresConnection: return "requiresConnection"
+        @unknown default: return "unknown"
+        }
     }
 }
