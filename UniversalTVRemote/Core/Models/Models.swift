@@ -36,6 +36,15 @@ public struct DiscoveredDevice: Identifiable, Hashable, Codable {
         self.type = type
         self.metadata = metadata
     }
+
+    public static func == (lhs: DiscoveredDevice, rhs: DiscoveredDevice) -> Bool {
+        lhs.ipAddress == rhs.ipAddress && lhs.type == rhs.type
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ipAddress)
+        hasher.combine(type)
+    }
 }
 
 public enum Capability: String, CaseIterable, Hashable, Codable {

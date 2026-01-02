@@ -29,7 +29,7 @@ struct OnboardingView: View {
                 Button(action: {
                     showingManualEntry = true
                 }) {
-                    Label("Saisie IP manuelle", systemImage: "pencil")
+                    Label("Entrer l’IP manuellement", systemImage: "pencil")
                 }
                 .buttonStyle(.bordered)
 
@@ -65,30 +65,38 @@ struct OnboardingView: View {
         }
         .sheet(isPresented: $showingManualEntry) {
             NavigationView {
+                let trimmedIP = manualIPAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+                let isValidIP = IPAddressValidator.isValidIPv4(trimmedIP)
                 Form {
                     Section(header: Text("LG webOS")) {
                         TextField("Adresse IP", text: $manualIPAddress)
                             .keyboardType(.numbersAndPunctuation)
+                        if !manualIPAddress.isEmpty && !isValidIP {
+                            Text("Format IP invalide (ex: 192.168.1.50)")
+                                .foregroundColor(.red)
+                        }
                     }
                 }
-                .navigationTitle("Ajout manuel")
+                .navigationTitle("Connexion LG")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Annuler") { showingManualEntry = false }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Ajouter") {
-                            let ip = manualIPAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !ip.isEmpty else { return }
+                        Button("Connecter") {
+                            guard isValidIP else { return }
                             let device = DiscoveredDevice(
-                                name: "LG webOS TV \(ip)",
-                                ipAddress: ip,
-                                type: .lgWebOS
+                                name: "LG webOS (manuel)",
+                                ipAddress: trimmedIP,
+                                port: 3001,
+                                type: .lgWebOS,
+                                metadata: ["SOURCE": "MANUAL"]
                             )
                             discoveryViewModel.addManualDevice(device)
                             showingManualEntry = false
                             manualIPAddress = ""
                         }
+                        .disabled(!isValidIP)
                     }
                 }
             }

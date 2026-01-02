@@ -34,10 +34,26 @@ public final class CompositeDiscoveryService: DeviceDiscoveryService {
 #endif
     }
 
+    public static var defaultSSDPTimeout: TimeInterval {
+        SSDPScanner.defaultTimeout
+    }
+
     public func scan() async -> [DiscoveredDevice] {
-        async let ssdp = ssdpScanner.scan(timeout: 3.0)
+        async let ssdp = ssdpScanner.scan(timeout: Self.defaultSSDPTimeout)
         async let bonjour = bonjourScanner.scan(timeout: Self.defaultBonjourTimeout)
         let devices = await (ssdp + bonjour)
-        return Array(Set(devices))
+        var uniqueDevices: [DeviceKey: DiscoveredDevice] = [:]
+        for device in devices {
+            let key = DeviceKey(ipAddress: device.ipAddress, type: device.type)
+            if uniqueDevices[key] == nil {
+                uniqueDevices[key] = device
+            }
+        }
+        return Array(uniqueDevices.values)
     }
+}
+
+private struct DeviceKey: Hashable {
+    let ipAddress: String
+    let type: DeviceType
 }
