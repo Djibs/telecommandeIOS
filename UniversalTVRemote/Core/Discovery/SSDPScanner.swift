@@ -1,7 +1,7 @@
 // File: Core/Discovery/SSDPScanner.swift
 
 import Foundation
-import Network
+@preconcurrency import Network
 import OSLog
 
 public protocol SSDPScanning {
@@ -80,7 +80,7 @@ public final class SSDPScanner: SSDPScanning {
         let responsesStream = AsyncStream<SSDPResponse> { continuation in
             group.setReceiveHandler(maximumMessageSize: 65_535, rejectOversizedMessages: true) { message, data, isComplete in
                 guard isComplete, let data else { return }
-                let remoteEndpoint = message?.remoteEndpoint
+                let remoteEndpoint = message.remoteEndpoint
                 self.logger.info(
                     "SSDP réponse reçue (octets \(data.count, privacy: .public)) remote=\(remoteEndpoint?.debugDescription ?? "unknown", privacy: .public)"
                 )
@@ -235,13 +235,16 @@ public final class SSDPScanner: SSDPScanning {
         guard let data = message.data(using: .utf8) else { return }
 
         logger.info("SSDP envoi recherche ST=\(searchTarget, privacy: .public)")
-        group.send(content: data, to: endpoint, completion: .contentProcessed { error in
+
+        // NWConnectionGroup requires a Message describing send metadata.
+        let msg = NWConnectionGroup.Message(identifier: "ssdp-\(UUID().uuidString)")
+        group.send(content: data, to: endpoint, message: msg) { error in
             if let error {
                 self.logger.error("SSDP send error: \(error.localizedDescription, privacy: .public)")
-                return
+            } else {
+                self.logger.info("SSDP envoi confirmé ST=\(searchTarget, privacy: .public)")
             }
-            self.logger.info("SSDP envoi confirmé ST=\(searchTarget, privacy: .public)")
-        })
+        }
     }
 
     private func extractHost(from location: String, remoteEndpoint: NWEndpoint?) -> String? {
@@ -255,19 +258,30 @@ public final class SSDPScanner: SSDPScanning {
         return nil
     }
 
-    private func currentNetworkPath() async -> NWPath? {
-        let monitor = NWPathMonitor()
-        let queue = DispatchQueue(label: "ssdp-path-monitor")
-        let path = await withTimeout(1.0) {
-            await withCheckedContinuation { continuation in
-                monitor.pathUpdateHandler = { updatedPath in
-                    continuation.resume(returning: updatedPath)
-                    monitor.cancel()
-                }
-                monitor.start(queue: queue)
+    private func currentNetworkPath(timeout: TimeInterval = 1.0) async -> NWPath? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<NWPath?, Never>) in
+            let monitor = NWPathMonitor()
+            let queue = DispatchQueue(label: "ssdp-path-monitor")
+
+            var didResume = false
+
+            func finish(_ path: NWPath?) {
+                guard !didResume else { return }
+                didResume = true
+                continuation.resume(returning: path)
+                monitor.cancel()
+            }
+
+            monitor.pathUpdateHandler = { updatedPath in
+                finish(updatedPath)
+            }
+
+            monitor.start(queue: queue)
+
+            queue.asyncAfter(deadline: .now() + timeout) {
+                finish(nil)
             }
         }
-        return path ?? nil
     }
 
     private func pathInterfaceDescription(_ path: NWPath) -> String {

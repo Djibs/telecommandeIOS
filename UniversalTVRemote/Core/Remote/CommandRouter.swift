@@ -102,6 +102,16 @@ public final class CommandRouter: CommandRouting {
             return .playback
         case .channelUp, .channelDown:
             return .channel
+        case .digit(_):
+            // Numeric keypad is primarily used for channel entry (and sometimes input).
+            // Map it to `.channel` for capability warnings.
+            return .channel
+        case .settings:
+            // On LG, settings is implemented as launching the Settings app.
+            return .launcher
+        case .input, .list, .adSap:
+            // These behave like navigation/remote keys.
+            return .navigation
         }
     }
 }

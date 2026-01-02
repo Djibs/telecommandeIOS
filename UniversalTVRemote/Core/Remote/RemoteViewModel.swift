@@ -73,6 +73,15 @@ public final class RemoteViewModel: ObservableObject {
             return capabilities.contains(.playback)
         case .channelUp, .channelDown:
             return capabilities.contains(.channel)
+        case .digit(_):
+            // Numeric keys are used mainly for channel entry on TVs.
+            return capabilities.contains(.channel)
+        case .settings:
+            // On LG, settings is implemented by launching the Settings app.
+            return capabilities.contains(.launcher)
+        case .input, .list, .adSap:
+            // These behave like navigation/remote keys.
+            return capabilities.contains(.navigation)
         }
     }
 

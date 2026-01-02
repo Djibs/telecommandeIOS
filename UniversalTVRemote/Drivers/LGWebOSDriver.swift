@@ -8,6 +8,7 @@ import OSLog
 public final class LGWebOSDriver: TVDriver {
     public let device: DiscoveredDevice
     public let capabilities: Set<Capability> = [
+        .power,
         .navigation,
         .volume,
         .mute,
@@ -64,6 +65,32 @@ public final class LGWebOSDriver: TVDriver {
         switch command {
         case .power:
             controller.send(.turnOff)
+        case .settings:
+            // Plus fiable qu’un keycode : on ouvre directement l’app Réglages.
+            controller.send(.launchApp(appId: "com.webos.app.settings"))
+        case .input:
+            // Ouvre la sélection des sources (INPUT) côté TV.
+            controller.sendKey(.menu) // fallback for .input
+        case .list:
+            // Liste / guide des chaînes.
+            controller.sendKey(.info) // fallback for .list
+        case .adSap:
+            // Bouton combiné AD/SAP (changement de piste audio / audio description selon modèle).
+            controller.sendKey(.cc) // fallback for .sap
+        case .digit(let n):
+            switch n {
+            case 0: controller.sendKey(.num0)
+            case 1: controller.sendKey(.num1)
+            case 2: controller.sendKey(.num2)
+            case 3: controller.sendKey(.num3)
+            case 4: controller.sendKey(.num4)
+            case 5: controller.sendKey(.num5)
+            case 6: controller.sendKey(.num6)
+            case 7: controller.sendKey(.num7)
+            case 8: controller.sendKey(.num8)
+            case 9: controller.sendKey(.num9)
+            default: throw RemoteError.unsupported
+            }
         case .home:
             controller.sendKey(.home)
         case .back:

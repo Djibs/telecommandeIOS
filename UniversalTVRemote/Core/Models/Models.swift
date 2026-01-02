@@ -61,8 +61,9 @@ public enum Capability: String, CaseIterable, Hashable, Codable {
     case voice
 }
 
-public enum RemoteCommand: Hashable, Codable {
+public enum RemoteCommand: Equatable {
     case power
+    case digit(Int)
     case home
     case back
     case ok
@@ -81,6 +82,10 @@ public enum RemoteCommand: Hashable, Codable {
     case rewind
     case channelUp
     case channelDown
+    case settings
+    case input
+    case list
+    case adSap
 }
 
 public enum LaunchableApp: String, CaseIterable, Codable {

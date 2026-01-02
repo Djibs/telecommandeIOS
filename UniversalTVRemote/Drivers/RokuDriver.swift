@@ -41,6 +41,11 @@ public final class RokuDriver: TVDriver {
         case .rewind: path = "Rev"
         case .channelUp: path = "ChannelUp"
         case .channelDown: path = "ChannelDown"
+        case .digit(let n):
+            guard (0...9).contains(n) else { throw RemoteError.unsupported }
+            path = "Lit_\(n)"
+        default:
+            throw RemoteError.unsupported
         }
         let url = baseURL.appendingPathComponent("keypress/")
             .appendingPathComponent(path)
