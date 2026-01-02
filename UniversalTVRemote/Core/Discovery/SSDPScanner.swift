@@ -35,6 +35,23 @@ public final class SSDPScanner: SSDPScanning {
         let fallbackDeadline = Date().addingTimeInterval(fallbackDelay)
         let queue = DispatchQueue(label: "ssdp-scanner")
 
+        connection.stateUpdateHandler = { [logger] state in
+            switch state {
+            case .setup:
+                logger.info("SSDP état connexion: setup")
+            case .waiting(let error):
+                logger.warning("SSDP état connexion: waiting \(error.localizedDescription, privacy: .public)")
+            case .ready:
+                logger.info("SSDP état connexion: ready")
+            case .failed(let error):
+                logger.error("SSDP état connexion: failed \(error.localizedDescription, privacy: .public)")
+            case .cancelled:
+                logger.info("SSDP état connexion: cancelled")
+            @unknown default:
+                logger.warning("SSDP état connexion: inconnu")
+            }
+        }
+
         connection.start(queue: queue)
         logger.info("SSDP startScan (timeout \(timeout, privacy: .public)s)")
         sendSearchMessage(connection, searchTarget: lgServiceType)
@@ -77,6 +94,7 @@ public final class SSDPScanner: SSDPScanning {
 
         if responsesReceived == 0 {
             logger.info("SSDP aucune réponse reçue")
+            logger.info("SSDP hint: multicast bloqué / réseau invité / autorisation réseau local")
         } else if results.isEmpty {
             logger.info("SSDP réponses reçues mais non parsées")
         }
@@ -126,6 +144,19 @@ public final class SSDPScanner: SSDPScanning {
                     continuation.resume(returning: nil)
                     return
                 }
+                self.logger.info("SSDP réponse reçue (octets \(data.count, privacy: .public))")
+                if let payload = String(data: data, encoding: .utf8) {
+                    let lines = payload
+                        .split(whereSeparator: \.isNewline)
+                        .prefix(3)
+                        .map { AppLogger.truncate(String($0), maxLength: 160) }
+                    if !lines.isEmpty {
+                        AppLogger.debugIfVerbose(
+                            "SSDP payload (3 lignes max): \(lines.joined(separator: " | "))",
+                            logger: self.logger
+                        )
+                    }
+                }
                 continuation.resume(returning: SSDPResponse(data: data))
             }
         }
@@ -140,7 +171,15 @@ public final class SSDPScanner: SSDPScanning {
         let type = inferType(st: st, usn: usn, server: server)
 
         // SSDP: on déduit l’IP depuis LOCATION (le plus fiable ici)
-        guard let host = URL(string: location)?.host else { return nil }
+        guard !location.isEmpty else {
+            let keys = headers.keys.sorted().joined(separator: ", ")
+            AppLogger.debugIfVerbose("SSDP LOCATION absente, headers présents: \(keys)", logger: logger)
+            return nil
+        }
+        guard let host = URL(string: location)?.host else {
+            AppLogger.debugIfVerbose("SSDP LOCATION invalide: \(location)", logger: logger)
+            return nil
+        }
 
         let port = (type == .lgWebOS) ? 3001 : URL(string: location)?.port
         let defaultName = headers["SERVER"] ?? headers["LOCATION"] ?? "Appareil SSDP"
@@ -181,10 +220,13 @@ public final class SSDPScanner: SSDPScanning {
 
         guard let data = message.data(using: .utf8) else { return }
 
+        logger.info("SSDP envoi recherche ST=\(searchTarget, privacy: .public)")
         connection.send(content: data, completion: .contentProcessed { error in
             if let error {
                 self.logger.error("SSDP send error: \(error.localizedDescription, privacy: .public)")
+                return
             }
+            self.logger.info("SSDP envoi confirmé ST=\(searchTarget, privacy: .public)")
         })
     }
 }
