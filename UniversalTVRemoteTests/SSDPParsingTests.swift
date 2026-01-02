@@ -30,4 +30,13 @@ final class SSDPParsingTests: XCTestCase {
         XCTAssertEqual(headers["LOCATION"], "http://192.168.1.50:3000")
         XCTAssertEqual(headers["CACHE-CONTROL"], "max-age=1800")
     }
+
+    func testParseTrimsHeaderWhitespace() {
+        let response = "HTTP/1.1 200 OK\r\nST:  roku:ecp  \r\nLOCATION:   http://192.168.1.2:8060 \r\n\r\n"
+        let data = Data(response.utf8)
+        let scanner = SSDPScanner()
+        let headers = scanner.parseSSDPResponse(data)
+        XCTAssertEqual(headers["ST"], "roku:ecp")
+        XCTAssertEqual(headers["LOCATION"], "http://192.168.1.2:8060")
+    }
 }
